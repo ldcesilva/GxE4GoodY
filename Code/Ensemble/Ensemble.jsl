@@ -1,0 +1,522 @@
+﻿root_path = "\\tdl\Public2\G2F\Manuscript\"; // Adjust to your path
+prep_path = root_path || "\Results\DataPrep\";
+train_path = root_path || "\Data\Challenge2024\Training_data";
+test_path = root_path || "\Data\Challenge2024\Testing_data";
+
+// Import text file: oof_model_A_D_E_val.csv
+Open(
+	root_path || "/Results/M1/oof_model_A_D_E_val.csv",
+	columns(
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "ytrue", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "ypred", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+Data Table( "oof_model_A_D_E_val" ):ypred << Set Name( "m1_ypred" );
+
+// Save Columns: Save Standardized
+Local( {obj},
+	obj = Data Table( "oof_model_A_D_E_val" ) << Oneway( Y( :ytrue ), X( :Env ) );
+	obj << Save Standardized;
+	obj << Close Window;
+);
+
+// Save Columns: Save Standardized
+Local( {obj},
+	obj = Data Table( "oof_model_A_D_E_val" ) << Oneway( Y( :m1_ypred ), X( :Env ) );
+	obj << Save Standardized;
+	obj << Close Window;
+);
+
+
+// Import text file: guess_gtrain.csv
+Open(
+	root_path || "/Results/M2/2024/guess_gtrain.csv",
+	columns(
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "ypred", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+Data Table( "guess_gtrain" ):ypred << Set Name( "m2_ypred" );
+
+// Save Columns: Save Standardized
+Local( {obj},
+	obj = Data Table( "guess_gtrain" ) << Oneway( Y( :m2_ypred ), X( :Env ) );
+	obj << Save Standardized;
+	obj << Close Window;
+);
+
+
+// Import text file: tab10a_pred.csv
+Open(
+	root_path || "/Results/M3/oof/tab10a_pred.csv",
+	columns(
+		New Column( "Column 1", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "Experiment_Recode", Character, "Nominal" ),
+		New Column( "Year", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "tab10a", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "Estimate", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+// Delete column: Column 1
+Data Table( "tab10a_pred" ) << Delete Columns( :Column 1 );
+
+// Change column name: tab10a → ypred
+Data Table( "tab10a_pred" ):tab10a << Set Name( "m3_ypred stdized by Env" );
+
+// Change column name: Estimate → ytrue
+Data Table( "tab10a_pred" ):Estimate << Set Name( "ytrue stdized by Env" );
+
+
+// Join data tables
+Data Table( "oof_model_A_D_E_val" ) << Join(
+	With( Data Table( "guess_gtrain" ) ),
+	Select(
+		:Env, :Hybrid, :ytrue, :m1_ypred, :ytrue stdized by Env,
+		:m1_ypred stdized by Env
+	),
+	SelectWith( :m2_ypred, :m2_ypred stdized by Env ),
+	By Matching Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 0, 0 ),
+	Preserve main table order( 1 ),
+	Output Table( "Join1" )
+);
+
+// Join data tables
+Data Table( "Join1" ) <<
+Join(
+	With( Data Table( "tab10a_pred" ) ),
+	Select(
+		:Env, :Hybrid, :ytrue, :m1_ypred, :ytrue stdized by Env,
+		:m1_ypred stdized by Env, :m2_ypred, :m2_ypred stdized by Env
+	),
+	SelectWith( :m3_ypred stdized by Env ),
+	By Matching Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 0, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"Join2"
+	)
+);
+
+// Import text file: oof_model_A_D_E_test.csv
+Open(
+	root_path || "/Results/M1/oof_model_A_D_E_test.csv",
+	columns(
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "ytrue", Character, "Nominal" ),
+		New Column( "ypred", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+// Delete column: ytrue
+Data Table( "oof_model_A_D_E_test" ) << Delete Columns( :ytrue );
+
+Data Table( "oof_model_A_D_E_test" ):ypred << Set Name( "m1_ypred" );
+
+// Save Columns: Save Standardized
+Local( {obj},
+	obj = Data Table( "oof_model_A_D_E_test" ) << Oneway( Y( :m1_ypred ), X( :Env ) );
+	obj << Save Standardized;
+	obj << Close Window;
+);
+
+// Combine similar TableBoxes into a Data Table
+Local( {obj},
+	obj = Data Table( "oof_model_A_D_E_test" ) <<
+	Oneway(
+		Y( :m1_ypred stdized by Env),
+		X( :Hybrid ),
+		Means and Std Dev( 1 ),
+		Mean Error Bars( 1 ),
+		Std Dev Lines( 1 ),
+		By( :Env )
+	);
+	Report( obj[1] )["Means and Std Deviations", Table Box( 1 )] <<
+	Make Combined Data Table;
+	obj[1] << Close Window;
+);
+
+onedt1 = Current Data Table();
+Data Table( onedt1 ):Mean << Set Name( "m1_ypred stdized by Env" );
+Data Table( onedt1 ):Level << Set Name( "Hybrid" );
+// Delete columns
+Data Table( onedt1 ) << Delete Columns(
+	:Table, :X, :Y, :Number, :Std Dev, :Std Err Mean, :Lower 95%, :Upper 95%
+);
+
+
+// Concatenate tables
+Data Table(
+	"Join2"
+) << Concatenate(
+	Data Table( onedt1 ),
+	Output Table(
+		"Concat1"
+	)
+);
+
+// Combine similar TableBoxes into a Data Table
+Local( {obj},
+	obj = Data Table( "oof_model_A_D_E_test" ) <<
+	Oneway(
+		Y( :m1_ypred),
+		X( :Hybrid ),
+		Means and Std Dev( 1 ),
+		Mean Error Bars( 1 ),
+		Std Dev Lines( 1 ),
+		By( :Env )
+	);
+	Report( obj[1] )["Means and Std Deviations", Table Box( 1 )] <<
+	Make Combined Data Table;
+	obj[1] << Close Window;
+);
+
+onedt2 = Current Data Table();
+Data Table( onedt2 ):Mean << Set Name( "m1_ypred" );
+Data Table( onedt2 ):Level << Set Name( "Hybrid" );
+// Delete columns
+Data Table( onedt2 ) << Delete Columns(
+	:Table, :X, :Y, :Number, :Std Dev, :Std Err Mean, :Lower 95%, :Upper 95%
+);
+
+
+// Update data table
+Data Table( "Concat1" ) << Update(
+	With( Data Table( onedt2 ) ),
+	Match Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Add Columns from Update Table( :m1_ypred ),
+	Replace Columns in Main Table( :m1_ypred )
+);
+
+
+// Import text file: guess_gtest.csv
+Open(
+	root_path || "/Results/M2/2024/guess_gtest.csv",
+	columns(
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "pred", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+
+Data Table( "guess_gtest" ):ypred << Set Name( "m2_ypred" );
+
+// Save Columns: Save Standardized
+Local( {obj},
+	obj = Data Table( "guess_gtest" ) << Oneway( Y( :m2_ypred ), X( :Env ) );
+	obj << Save Standardized;
+	obj << Close Window;
+);
+
+// Update data table
+Data Table( "Concat1" ) << Update(
+	With( Data Table( "guess_gtest" ) ),
+	Match Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Add Columns from Update Table( :Env, :Hybrid ),
+	Replace Columns in Main Table( :m2_ypred, :m2_ypred stdized by Env )
+);
+
+
+
+// Import text file: tab10a_stacked.csv
+Open(
+	root_path || "/Results/M3/sub/tab10a_stacked.csv",
+	columns(
+		New Column( "Column 1", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "Experiment_Recode", Character, "Nominal" ),
+		New Column( "Year", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "Fold", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "YPred", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "EnvFold", Character, "Nominal" ),
+		New Column( "EnvTest", Character, "Nominal" )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+// Delete column: Column 1
+Data Table( "tab10a_stacked" ) << Delete Columns( :Column 1 );
+
+// Change column name: tab10a → ypred
+Data Table( "tab10a_stacked" ):Ypred << Set Name( "m3_ypred stdized by Env" );
+
+
+// Combine similar TableBoxes into a Data Table
+Local( {obj},
+	obj = Data Table( "tab10a_stacked" ) <<
+	Oneway(
+		Y( :m3_ypred stdized by Env),
+		X( :Hybrid ),
+		Means and Std Dev( 1 ),
+		Mean Error Bars( 1 ),
+		Std Dev Lines( 1 ),
+		By( :Env )
+	);
+	Report( obj[1] )["Means and Std Deviations", Table Box( 1 )] <<
+	Make Combined Data Table;
+	obj[1] << Close Window;
+);
+
+onedt3 = Current Data Table();
+Data Table( onedt3 ):Mean << Set Name( "m3_ypred stdized by Env" );
+Data Table( onedt3 ):Level << Set Name( "Hybrid" );
+// Delete columns
+Data Table( onedt3 ) << Delete Columns(
+	:Table, :X, :Y, :Number, :Std Dev, :Std Err Mean, :Lower 95%, :Upper 95%
+);
+
+// Update data table
+Data Table( "Concat1" ) << Update(
+	With( Data Table( onedt3 ) ),
+	Match Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Add Columns from Update Table( :Env, :Hybrid ),
+	Replace Columns in Main Table( :m3_ypred stdized by Env )
+);
+
+// New formula column: Avg[m1_ypred,m2_ypred,m3_ypred stdized by Env]
+Data Table( "Concat1" ) << New Formula Column(
+	Operation( Category( "Combine" ), "Average" ),
+	Columns( :m1_ypred, :m2_ypred, :m3_ypred stdized by Env )
+) << Run Formulas;
+
+// Save Columns: Save Prediction Formula
+Local( {obj},
+	obj = Data Table( "Concat1" ) << Fit Model(
+		Y( :ytrue stdized by Env ),
+		Effects( :m1_ypred, :m2_ypred, :m3_ypred stdized by Env ),
+		Personality( "Generalized Regression" ),
+		Generalized Distribution( "Normal" ),
+		Run(
+			Set Random Seed( 650494064 ),
+			Fit(
+				Estimation Method( "Standard Least Squares" ),
+				Validation Method( "None" )
+			),
+			Fit(
+				Estimation Method( "Lasso" ),
+				Validation Method( "AICc" ),
+				Set Solution ID( 149 )
+			)
+		),
+		SendToReport(
+			Dispatch(
+				{"Standard Least Squares",
+				"Parameter Estimates for Original Predictors"}, "", TableBox,
+				{Sort By Column( 4, 0 )}
+			),
+			Dispatch( {"Normal Lasso with AICc Validation", "Solution Path"}, "1",
+				ScaleBox,
+				{Max( 341.292134831461 ), Inc( 100 )}
+			),
+			Dispatch( {"Normal Lasso with AICc Validation", "Solution Path"}, "2",
+				ScaleBox,
+				{Min( -16.3139343566899 ), Inc( 20 ), Minor Ticks( 1 )}
+			),
+			Dispatch( {"Normal Lasso with AICc Validation", "Solution Path"},
+				"Fit Generalized Solution Path", FrameBox,
+				{Frame Size( 565, 423 )}
+			),
+			Dispatch(
+				{"Normal Lasso with AICc Validation",
+				"Parameter Estimates for Original Predictors"}, "", TableBox,
+				{Sort By Column( 3, 0 )}
+			)
+		)
+	);
+	obj << (Fit[2] << Save Prediction Formula);
+	//obj << Close Window;
+);
+
+// Close Data Table: Join1
+Close( Data Table( "Join1" ), NoSave );
+
+
+// Close Data Table: Join2
+Close( Data Table( "Join2" ), NoSave );
+
+
+// Close Data Table: oof_model_A_D_E_val
+Close( Data Table( "oof_model_A_D_E_val" ), NoSave );
+
+
+// Close Data Table: tab10a_pred
+Close( Data Table( "tab10a_pred" ), NoSave );
+
+
+// Close Data Table: oof_model_A_D_E_test
+Close( Data Table( "oof_model_A_D_E_test" ), NoSave );
+
+
+// Close Data Table: guess_gtest
+Close( Data Table( "guess_gtest" ), NoSave );
+
+
+// Close Data Table: guess_gtrain
+Close( Data Table( "guess_gtrain" ), NoSave );
+
+
+// Close Data Table: Untitled 29
+Close( Data Table( onedt1 ), NoSave );
+
+
+// Close Data Table: Untitled 30
+Close( Data Table( onedt2 ), NoSave );
+
+
+// Close Data Table: tab10a_stacked
+Close( Data Table( "tab10a_stacked" ), NoSave );
+
+
+// Close Data Table: Untitled 31
+Close( Data Table( onedt3 ), NoSave );
+
+
+
+// Subset data table
+Data Table( "Concat1" ) << Select where( Contains( :Env, "2024" ) ) <<
+Subset( Selected Rows( 1 ), Selected columns only( 0 ) );
+
+
+// Join data tables
+// → Data Table( "Join of 7_Testing_Observed_Values with Subset of Concat1 2" )
+Data Table( "7_Testing_Observed_Values" ) << Join(
+	With( Data Table( "Subset of Concat1" ) ),
+	Select( :Env, :Hybrid, :Yield_Mg_ha ),
+	SelectWith(
+		:ytrue, :m1_ypred, :ytrue stdized by Env, :m1_ypred stdized by Env,
+		:m2_ypred, :m2_ypred stdized by Env, :m3_ypred stdized by Env,
+		:"Avg[m1_ypred,m2_ypred,m3_ypred stdized by Env]"n,
+		:ytrue stdized by Env Prediction Formula
+	),
+	By Matching Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 0, 0 ),
+	Preserve main table order( 1 ),
+	Output Table( "Join of 7_Testing_Observed_Values with Subset of Concat1" )
+);

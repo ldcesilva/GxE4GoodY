@@ -1,0 +1,59 @@
+﻿root_path = "\\tdl\Public2\G2F\Manuscript\"; // Adjust to your path
+prep_path = root_path || "\Results\DataPrep\";
+train_path = root_path || "\Data\Challenge2024\Training_data";
+test_path = root_path || "\Data\Challenge2024\Testing_data";
+
+// Import text file: oof_model_A_D_E_test.csv
+Open(
+	root_path || "/Results/M1/oof_model_A_D_E_test.csv",
+	columns(
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "ytrue", Character, "Nominal" ),
+		New Column( "ypred", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+);
+
+// Save To Data Table: Make Into Data Table
+Local( {obj},
+	obj = Data Table( "oof_model_A_D_E_test" ) <<
+	Tabulate(
+		Show Control Panel( 0 ),
+		Add Table(
+			Column Table( Analysis Columns( :ypred ), Statistics( Mean ) ),
+			Row Table( Grouping Columns( :Env, :Hybrid ) )
+		)
+	);
+	obj << Make Into Data Table;
+	obj << Close Window;
+);
+
+tbdt1 = Current Data Table();
+
+// Change column name: Mean(YPred) → ypred_tab10a
+Data Table( tbdt1 ):"Mean(YPred)"n << Set Name( "ypred_m1" );
+
+// Save data table: 
+Data Table( tbdt1 ) << Save( root_path || "/Results/M1/oof_model_A_D_E_test_mean.jmp" );
+
+// Close Data Table: oof_model_A_D_E_test
+Close( Data Table( "oof_model_A_D_E_test" ), NoSave );

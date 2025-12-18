@@ -1,0 +1,1379 @@
+﻿root_path = "\\tdl\Public2\G2F\Manuscript\"; // Adjust to your path
+prep_path = root_path || "\Results\DataPrep\";
+train_path = root_path || "\Data\Challenge2024\Training_data";
+test_path = root_path || "\Data\Challenge2024\Testing_data";
+
+//// Trait
+Open( train_path || "\1_Training_Trait_Data_2014_2023.csv" );
+// New column: Set
+Data Table( "1_Training_Trait_Data_2014_2023" ) << New Column( "Set", Character, "Nominal", Formula( "Train" ) );
+
+Local( {obj},
+	obj = Data Table( "1_Training_Trait_Data_2014_2023" ) <<
+	Tabulate(
+		Add Table(
+			Column Table(
+				Analysis Columns( :Date_Planted, :Date_Harvested ),
+				Statistics( Min )
+			),
+			Row Table( Grouping Columns( :Env ) )
+		)
+	);
+	obj << Make Into Data Table("xxx");
+	obj << Close Window;
+);
+
+tabdt = Current Data Table(); 
+
+Data Table( tabdt ):"Min(Date_Planted)"n << Set Name( "Date_Planted" );
+Data Table( tabdt ):"Min(Date_Harvested)"n << Set Name( "Date_Harvested" );
+
+// Update data table
+Data Table( "1_Training_Trait_Data_2014_2023" ) <<
+Update(
+	With( Data Table( tabdt ) ),
+	Match Columns( :Env = :Env ),
+	Replace Columns in Main Table( :Date_Planted, :Date_Harvested )
+);
+
+
+//// Meta
+Open( train_path || "\2_Training_Meta_Data_2014_2023.csv" );
+// New column: Set
+Data Table( "2_Training_Meta_Data_2014_2023" ) << New Column( "Set", Character, "Nominal", Formula( "Train" ) );
+
+// Update data table
+Data Table( "2_Training_Meta_Data_2014_2023" ) <<
+Update(
+	//With( Data Table( "1_Training_Trait_Data_2014_2023" ) ),
+	With( Data Table( tabdt ) ),
+	Match Columns( :Env = :Env ),
+	Add Columns from Update Table( :Date_Planted, :Date_Harvested )
+);
+
+Open( test_path || "/2_Testing_Meta_Data_2024.csv");
+// New column: Set
+Data Table( "2_Testing_Meta_Data_2024" ) << New Column( "Set", Character, "Nominal", Formula( "Test" ) );
+
+// Concatenate tables
+Data Table( "2_Training_Meta_Data_2014_2023" ) <<
+Concatenate(
+	Data Table( "2_Testing_Meta_Data_2024" ),
+	Output Table( "Concat_Meta" ),
+	Create source column
+);
+
+// New formula column: Date[Date_Planted]
+Data Table( "Concat_Meta" ) << New Formula Column(
+	Operation( Category( "Date Time" ), "Date" ),
+	Columns( :Date_Planted )
+);
+
+//// Soil
+Open( train_path || "/3_Training_Soil_Data_2015_2023.csv" );
+// New column: Set
+Data Table( "3_Training_Soil_Data_2015_2023" ) << New Column( "Set", Character, "Nominal", Formula( "Train" ) );
+
+Open( test_path || "/3_Testing_Soil_Data_2024.csv");
+// New column: Set
+Data Table( "3_Testing_Soil_Data_2024" ) << New Column( "Set", Character, "Nominal", Formula( "Test" ) );
+
+// Concatenate tables
+Data Table( "3_Training_Soil_Data_2015_2023" ) <<
+Concatenate(
+	Data Table( "3_Testing_Soil_Data_2024" ),
+	Output Table( "Concat_Soil" ),
+	Create source column
+);
+
+// Delete columns too much missing
+Data Table( "Concat_Soil" ) << Delete Columns(
+	:BpH, :Zinc ppm Zn, :Iron ppm Fe, :Manganese ppm Mn, :Copper ppm Cu,
+	:Boron ppm B
+);
+
+//// Weather
+Open( train_path || "/4_Training_Weather_Data_2014_2023_seasons_only.csv" );
+// New column: Set
+Data Table( "4_Training_Weather_Data_2014_2023_seasons_only" ) << New Column( "Set", Character, "Nominal", Formula( "Train" ) );
+
+Open( test_path || "/4_Testing_Weather_Data_2024_seasons_only.csv");
+// New column: Set
+Data Table( "4_Testing_Weather_Data_2024_seasons_only" ) << New Column( "Set", Character, "Nominal", Formula( "Test" ) );
+
+// Concatenate tables
+Data Table( "4_Training_Weather_Data_2014_2023_seasons_only" ) <<
+Concatenate(
+	Data Table( "4_Testing_Weather_Data_2024_seasons_only" ),
+	Output Table( "Concat_Weather" ),
+	Create source column
+);
+
+// Delete columns missing for testing set 
+Data Table( "Concat_Weather" ) << Delete Columns(
+	:GWETTOP, :ALLSKY_SFC_PAR_TOT, :GWETROOT, :GWETPROF, :ALLSKY_SFC_SW_DNI
+);
+
+//// EC
+Open( train_path || "/6_Training_EC_Data_2014_2023.csv" );
+// New column: Set
+Data Table( "6_Training_EC_Data_2014_2023" ) << New Column( "Set", Character, "Nominal", Formula( "Train" ) );
+
+Open(test_path || "/6_Testing_EC_Data_2024.csv");
+// New column: Set
+Data Table( "6_Testing_EC_Data_2024" ) << New Column( "Set", Character, "Nominal", Formula( "Test" ) );
+
+// Concatenate tables
+Data Table( "6_Training_EC_Data_2014_2023" ) <<
+Concatenate(
+	Data Table( "6_Testing_EC_Data_2024" ),
+	Output Table( "Concat_EC" ),
+	Create source column
+);
+
+// Change column modeling type: Range
+Data Table( "1_Training_Trait_Data_2014_2023" ):Range << Set Modeling Type( "Continuous" );
+
+// Change column modeling type: Pass
+Data Table( "1_Training_Trait_Data_2014_2023" ):Pass << Set Modeling Type( "Continuous" );
+
+// Save To Data Table: Make Into Data Table
+Local( {obj},
+	obj = Data Table( "1_Training_Trait_Data_2014_2023" ) <<
+	Tabulate(
+		Add Table(
+			Column Table(
+				Analysis Columns( :Range, :Pass ),
+				Statistics( N Missing )
+			),
+			Row Table( Grouping Columns( :Env ) )
+		)
+	);
+	obj << Make Into Data Table();
+	obj << Close Window;
+);
+
+tabdt = Current Data Table(); 
+
+// Change column modeling type: Range
+Data Table( "1_Training_Trait_Data_2014_2023" ):Range << Set Modeling Type( "Nominal" );
+
+// Change column modeling type: Pass
+Data Table( "1_Training_Trait_Data_2014_2023" ):Pass << Set Modeling Type( "Nominal" );
+
+// Update data table
+Data Table( "1_Training_Trait_Data_2014_2023" ) << Update( With( tabdt ), Match Columns( :Env = :Env ) );
+
+// Change column modeling type: Range
+Data Table( "1_Training_Trait_Data_2014_2023" ):"N Missing(Range)"n << Set Modeling Type( "Nominal" );
+
+// Change column modeling type: Pass
+Data Table( "1_Training_Trait_Data_2014_2023" ):"N Missing(Pass)"n << Set Modeling Type( "Nominal" );
+
+// Save data table to run SAS Mixed Model
+Data Table( "1_Training_Trait_Data_2014_2023" ) << Save(prep_path || "/_1_Training_Trait_2014_2023_S.csv");
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// Stop running this code!
+// Go to g2f2024_training_get_LSMeans.sas and run mixed model to get LSMeans for hybrids.
+// Convert the output file _1_Training_LSMeans.sas7bdat to JMP table and run code below.
+////////////////////////////////////////////////////////////////////////////////////////////
+
+// Check for LSMeans file 
+filePath = "prep_path/_1_Training_LSMeans.csv";
+
+// Check if the file exists
+If( File Exists( filePath ),
+    // If the file exists, execute code here
+    Show( "File exists: " || filePath );
+, // Else (if the file does not exist)
+    // Execute code here if the file does not exist
+    Show( "File does not exist: " || filePath );
+    Stop(); // Halts the entire script
+);
+
+// Open LSMeans output from SAS Mixed Models
+Open( prep_path || "/_1_Training_LSMeans.csv" );
+
+// Join data tables
+Data Table( "1_Training_Trait_2014_2023_S" ) <<
+Join(
+	With( Data Table( "_1_Training_LSMeans" ) ),
+	Merge Same Name Columns,
+	By Matching Columns( :Env = :Env, :Hybrid = :Hybrid ),
+	Drop multiples( 1, 0 ),
+	Include Nonmatches( 1, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Training_Trait with 1_Training_LSMeans"
+	)
+);
+
+// Delete columns
+Data Table( "1_Training_Trait with 1_Training_LSMeans" ) <<
+Delete Columns(
+	:Replicate, :Block, :Plot, :Range, :Pass, :Plot_Area_ha, :Stand_Count_plants, :Pollen_DAP_days, :Silk_DAP_days,
+	:Plant_Height_cm, :Ear_Height_cm, :Root_Lodging_plants, :Stalk_Lodging_plants,
+	:Yield_Mg_ha, :Grain_Moisture, :Twt_kg_m3
+);
+
+// Save data table
+//Data Table( "1_Training_Trait with 1_Training_LSMeans" ) << Save(prep_path || "/1_Training_Trait with 1_Training_LSMeans.jmp");
+
+// Open Data Table: 1_Submission_Template_2024.jmp
+Open( test_path || "/1_Submission_Template_2024.csv" );
+
+// Change column info: Year
+Data Table( "1_Submission_Template_2024" ) << New Column("Year", Numeric, Formula( Word( 2, :Env, "_" ) ));
+Data Table( "1_Submission_Template_2024" ) << New Column("Field_Location", Character, Formula( Word( 1, :Env, "_" ) ));
+
+// Join data tables
+Data Table( "1_Submission_Template_2024" ) << Join(
+	With( Data Table( "2_Testing_Meta_Data_2024" ) ),
+	SelectWith( :Date_Planted ),
+	Select( :Env, :Hybrid, :Year, :"Field_Location"n ),
+	By Matching Columns( :Env = :Env ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 0, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Submission_Template_2024 with 2_Testing_Meta_Data_2024"
+	)
+);
+
+// Concatenate tables
+Data Table( "1_Training_Trait with 1_Training_LSMeans" ) <<
+Concatenate(
+	Data Table( "1_Submission_Template_2024 with 2_Testing_Meta_Data_2024" ),
+	Output Table(
+		"Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024"
+	)
+);
+
+// Save data table: 
+//Data Table(	"Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024") << Save(prep_path || "/Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024.jmp");
+
+// Change column modeling type: Year
+Data Table( "Concat_Meta" ):Year << Set Modeling Type( "Nominal" );
+
+// Join data tables
+Data Table( "Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024" ) <<
+Join(
+	With( Data Table( "Concat_Meta" ) ),
+	Merge Same Name Columns,
+	By Matching Columns( :Env = :Env ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 1, 1 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Training_Trait with 1_Training_LSMeans with Concat_Meta"
+	)
+);
+
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta" ):Year <<
+Set Data Type( Numeric ) << Set Field Width( 12 );
+
+// Save data table
+//Data Table("1_Training_Trait with 1_Training_LSMeans with Concat_Meta") << Save(prep_path || "/1_Training_Trait with 1_Training_LSMeans with Concat_Meta.jmp");
+
+// Change column modeling type: Year
+Data Table( "Concat_Soil" ):Year << Set Modeling Type( "Nominal" );
+
+// Change column info: Year
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta" ):Year <<
+Set Data Type( Numeric ) << Set Field Width( 12 );
+
+// Join data tables
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta"
+) << Join(
+	With( Data Table( "Concat_Soil" ) ),
+	Merge Same Name Columns,
+	By Matching Columns( :Env = :Env, :Year = :Year),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 1, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil"
+	)
+);
+
+// Select duplicate rows
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil"
+) << Select Duplicate Rows( Match( :Env, :Year, :Hybrid ) );
+
+// Toggle selected rows' exclude state
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil"
+) << Select Duplicate Rows( Match( :Env, :Year, :Hybrid ) ) << Exclude;
+
+// Delete selected rows
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil"
+) << Select Duplicate Rows( Match( :Env, :Year, :Hybrid ) ) << Delete Rows;
+
+// Save data table
+//Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil") << Save(prep_path || "/1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil.jmp");
+
+// Subset data table
+Data Table(
+	"Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024"
+) << Select Duplicate Rows( Match( :Env ) ) << Invert Row Selection <<
+Subset(
+	Output Table(
+		"Subset of Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024"
+	),
+	Selected Rows( 1 ),
+	Selected columns only( 0 ),
+	columns( :Env, :Date_Planted, :Date_Harvested )
+);
+
+// Join data tables
+Data Table( "Concat_Weather" ) << Join(
+	With(
+		Data Table(
+			"Subset of Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024"
+		)
+	),
+	Merge Same Name Columns,
+	By Matching Columns( :Env = :Env ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 1, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	)
+);
+
+// Change column 
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather" ):Date_Planted << Set Name( "Date_Planted_Orig" );
+
+// New column: 
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather" ) <<
+New Column( "Date_Planted_tmp",
+	Character,
+	"Nominal",
+	Formula(
+		If( Is Missing( :Date_Planted_Orig ),
+			Char( "05/01/" ) || Substr( Char( :Env ), 6, 4 ),
+			//char(:Date_Planted_Orig)
+		)
+	)
+);
+
+// New formula column: Date[Date_Planted]
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << New Formula Column(
+	Operation( Category( "Date Time" ), "Date" ),
+	Columns( :Date_Planted_tmp )
+);
+
+// Change column format: Date[Date_Planted]
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+):"Date[Date_Planted_tmp]"n << Format( "m/d/y", 12 );
+
+// New column: 
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather" ) <<
+New Column( "Date_Planted",
+	Continuous,
+	Formula(
+		If( Is Missing( :Date_Planted_Orig ),
+			:"Date[Date_Planted_tmp]"n,
+			:Date_Planted_Orig
+		)
+	)
+);
+
+// Change column info: Date_Planted
+Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"):Date_Planted << Input Format( "m/d/y" ) << Format( "m/d/y", 12 );
+
+// Transform column
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather") <<
+Apply Formula(
+	Columns( :Date ),
+	Formula(
+		Substr( Char( :Date ), 5, 2 ) || Char( "/" ) || 
+		Substr( Char( :Date ), 7, 2 )  || Char( "/" ) ||
+		Substr( Char( :Date ), 1, 4 )
+		
+	),
+	Output( New Formula( "mmddyy" ) )
+);
+wait(2);
+
+// New formula column: Date[mmddyy]
+Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather") <<
+New Formula Column(
+	Operation( Category( "Date Time" ), "Date" ),
+	Columns( :mmddyy )
+);
+wait(2);
+
+// New formula column: Day of Year
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << New Formula Column(
+	Operation( Category( "Date Time" ), "Day of Year" ),
+	Columns( :"Date[mmddyy]"n )
+);
+
+// New formula column: Day of Year[Date_Planted]
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << New Formula Column(
+	Operation( Category( "Date Time" ), "Day of Year" ),
+	Columns( :Date_Planted )
+);
+
+// New column: DaysAfterPlanted
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << New Column( ":DaysAfterPlanted",
+	Numeric,
+	"Continuous",
+	Formula( (:"Day of Year[Date[mmddyy]]"n - :"Day of Year[Date_Planted]"n))
+);
+wait(2);
+
+// Save data table
+//Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather") << save(prep_path || "\1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather.jmp");
+
+// Select where for season only and days up to July (212 days) because year 2024 don't have these data points as is noticed the competition notes.
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Row Selection(
+	Select where(
+		:":DaysAfterPlanted"n >= 0 & :":DaysAfterPlanted"n <= 120 & :"Day of Year[Date[mmddyy]]"n <= 212
+	),
+);
+wait(2);
+
+// Subset data table
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Subset(
+	Output Table(
+		"Subset 120 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	),
+	Selected Rows( 1 ),
+	Selected columns only( 0 )
+);
+
+// Data table summary
+Data Table(
+	"Subset 120 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Summary(
+	Group( :Env ),
+	Max( :":DaysAfterPlanted"n ),
+	Min( :":DaysAfterPlanted"n ),
+	Freq( "None" ),
+	Weight( "None" ),
+	output table name( "Weather maximum days after planted by env" )
+);
+
+// Select up to 56 days after planting to make sure year 2024 don't have missing data
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Row Selection(
+	Select where(
+		:":DaysAfterPlanted"n >= 0 & :":DaysAfterPlanted"n <= 56 & :"Day of Year[Date[mmddyy]]"n <= 212
+	),
+);
+wait(2);
+
+// Subset data table
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Subset(
+	Output Table(
+		"Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	),
+	Selected Rows( 1 ),
+	Selected columns only( 0 )
+);
+
+// Change column modeling type: :DaysAfterPlanted
+Data Table("Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"):":DaysAfterPlanted"n << Set Modeling Type( "Nominal" );
+
+// Split data table 
+Data Table(	"Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather") << Split(
+	Split By( :":DaysAfterPlanted"n ),
+	Split(
+		:RH2M, :T2M_MAX, :ALLSKY_SFC_SW_DWN, :T2MWET, :QV2M, :T2M_MIN, :T2MDEW, :PS,
+		:T2M, :WS2M, :PRECTOTCORR
+	),
+	Output Table(
+		"Split Subset 56 days Concat_Weather by DaysAfterPlanted"
+	),
+	Remaining Columns( Keep( :Env ) ),
+	Sort by Column Property
+);
+
+// Save data table
+//Data Table(	"Split Subset 56 days Concat_Weather by DaysAfterPlanted") << Save(	prep_path || "/Split Subset 56 days Concat_Weather by DaysAfterPlanted.jmp");
+
+// Select where
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Row Selection(
+	Select where( :":DaysAfterPlanted"n >= 0 & :":DaysAfterPlanted"n <= 56 ),
+	Dialog(
+		Edit( Less or Equal( Source Column( :":DaysAfterPlanted"n ) ) ),
+	)
+);
+
+// Subset data table
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Select where( :":DaysAfterPlanted"n >= 0 & :":DaysAfterPlanted"n <= 56 ) << Subset(Output Table("Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"), Selected Rows( 1 ), Selected columns only( 0 ) );
+
+// Select where
+Data Table(
+	"Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Select where( Contains( :Env, "2024" ) ) << Subset(
+	Output Table(
+		"Subset Test 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	),
+	Selected Rows( 1 ),
+	Selected columns only( 0 )
+);
+
+Data Table(	"Subset Test 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather") << Save(prep_path || "\Subset Test 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather.jmp");
+
+// Select where
+Data Table(
+	"Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+) << Select where( !Contains( :Env, "2024" ) ) << Subset(
+	Output Table(
+		"Subset Train 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	),
+	Selected Rows( 1 ),
+	Selected columns only( 0 )
+);
+
+// Save data table
+Data Table(	"Subset Train 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather") << Save(	prep_path || "\Subset Train 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather.jmp");
+
+// Join data tables
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil"
+) << Join(
+	With( Data Table( "Split Subset 56 days Concat_Weather by DaysAfterPlanted" )),
+	Merge Same Name Columns,
+	By Matching Columns( :Env = :Env ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 1, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather"
+	)
+);
+
+// Select duplicate rows
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather"
+) << Select Duplicate Rows( Match( :Env, :Year, :Hybrid ) );
+
+// Toggle selected rows' exclude state
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather"
+) << Select Duplicate Rows( Match( :Env, :Year, :Hybrid ) ) << Exclude;
+
+// Delete selected rows
+Data Table(
+	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather"
+) << Select Duplicate Rows( Match( :Env, :Year, :Hybrid ) ) << Delete Rows;
+
+// Save data table
+//Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather") << Save(	prep_path || "/1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather.jmp");
+
+// Join data tables
+Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather") << Join(
+	With( Data Table( "Concat_EC" )),
+	Merge Same Name Columns,
+	By Matching Columns( :Env = :Env ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 1, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather Concat_EC"
+	)
+);
+
+//Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather Concat_EC") << Save(prep_path || "/1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather Concat_EC.jmp");
+
+// Close Data Table: 
+Close( Data Table( "1_Training_Trait_2014_2023_S" ), NoSave );
+
+// Close Data Table: 2_Training_Meta_Data_2014_2023
+Close( Data Table( "2_Training_Meta_Data_2014_2023" ), NoSave );
+
+// Close Data Table: 2_Testing_Meta_Data_2024
+Close( Data Table( "2_Testing_Meta_Data_2024" ), NoSave );
+
+// Close Data Table: 3_Training_Soil_Data_2015_2023
+Close( Data Table( "3_Training_Soil_Data_2015_2023" ), NoSave );
+
+// Close Data Table: 3_Testing_Soil_Data_2024
+Close( Data Table( "3_Testing_Soil_Data_2024" ), NoSave );
+
+// Close Data Table: 4_Training_Weather_Data_2014_2023
+Close( Data Table( "4_Training_Weather_Data_2014_2023_seasons_only" ), NoSave );
+
+// Close Data Table: 4_Testing_Weather_Data_2022
+Close( Data Table( "4_Testing_Weather_Data_2024_seasons_only" ), NoSave );
+
+// Close Data Table: 1_Training_Trait with 1_Training_LSMeans
+Close( Data Table( "1_Training_Trait with 1_Training_LSMeans" ), NoSave );
+
+// Close Data Table: 1_Training_LSMeans
+Close( Data Table( "_1_Training_LSMeans" ), NoSave );
+
+// Close Data Table: 1_Training_Trait with 1_Training_LSMeans with Concat_Meta
+Close(Data Table( "1_Training_Trait with 1_Training_LSMeans with Concat_Meta" ),NoSave);
+
+// Close Data Table: 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil
+Close(Data Table("1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil"),	NoSave);
+
+// Close Data Table: Split Subset 56 days Concat_Weather by DaysAfterPlanted
+Close(	Data Table( "Split Subset 56 days Concat_Weather by DaysAfterPlanted" ),NoSave);
+
+// Close Data Table: 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather
+Close(	Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"	),	NoSave);
+
+// Close Data Table: 6_Training_EC_Data_2014_2023
+Close( Data Table( "6_Training_EC_Data_2014_2023" ), NoSave );
+
+// Close Data Table: 6_Testing_EC_Data_2024
+Close( Data Table( "6_Testing_EC_Data_2024" ), NoSave );
+
+// Close Data Table: Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather
+Close(Data Table("Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"	),	NoSave);
+
+// Close Data Table: Subset of Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024
+Close(	Data Table(	"Subset of Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024"),	NoSave);
+
+// Close Data Table: Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024
+Close(	Data Table(	"Concat of 1_Training_Trait with 1_Training_LSMeans 1_Submission_Template_2024"	),	NoSave);
+
+// Close Data Table: 1_Submission_Template_2024 with 2_Testing_Meta_Data_2024
+Close(	Data Table( "1_Submission_Template_2024 with 2_Testing_Meta_Data_2024" ),	NoSave);
+
+// Close Data Table: 1_Submission_Template_2024
+Close( Data Table( "1_Submission_Template_2024" ), NoSave );
+
+// Close Data Table: 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather
+Close(	Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather"	),	NoSave);
+
+// Close Data Table: Concat_EC
+Close( Data Table( "Concat_EC" ), NoSave );
+
+// Close Data Table: Concat_Weather
+Close( Data Table( "Concat_Weather" ), NoSave );
+
+// Close Data Table: Concat_Soil
+Close( Data Table( "Concat_Soil" ), NoSave );
+
+// Close Data Table: Concat_Meta
+Close( Data Table( "Concat_Meta" ), NoSave );
+
+// Close Data Table: Subset 120 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather
+Close(Data Table( "Subset 120 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"	),NoSave);
+
+// Open Data Table: 5_Genotype_Data_All_Years_wide.jmp
+Open( train_path || "/5_Genotype_Data_All_2014_2025_Hybrids_numerical.csv" );
+
+// Group Columns
+Data Table( "5_Genotype_Data_All_2014_2025_Hybrids_numerical" ) << Group Columns(
+	Item Range( :S1_1007742, :S10_151157757 ),
+	"SNPs"
+);
+
+// Join data tables
+Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather Concat_EC") << Join(
+	With( Data Table( "5_Genotype_Data_All_2014_2025_Hybrids_numerical" ) ),
+	By Matching Columns( :Hybrid = :Marker ),
+	Drop multiples( 0, 0 ),
+	Include Nonmatches( 1, 0 ),
+	Preserve main table order( 1 ),
+	Output Table(
+		"FinalTable"
+	)
+);
+
+Data Table( "2_Testing_Meta_Data_2024" ) << 
+New Column( "Experimenbt_Recode", Character, "Nominal", Formula( Substr( :Field_Location, 1, 4 ) ) );
+
+Data Table( "2_Testing_Meta_Data_2024" ) << 
+New Column( "Station1", Character, "Nominal", Formula( Substr( :Experimenbt_Recode, 3, -1 )  ) );
+
+// Delete selected rows
+Data Table( "FinalTable" ) << Select Where( :Field_Location == "" ) << Delete Rows;
+
+// Delete column: Marker
+Data Table( "FinalTable" ) << Delete Columns( :Marker );
+
+// Close Data Table: 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather Concat_EC
+Close(	Data Table(	"1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Soil with Split Subset Concat_Weather Concat_EC"	),	NoSave);
+
+// Recode column: Treatment1
+Local( {dt, col1},
+	dt = Data Table( "FinalTable" );
+	dt << Begin Data Update;
+	col1 = dt << New Column( dt:Treatment );
+	col1 << Set Name( "Treatment1" );
+	dt << Move Selected Columns( {col1}, after( dt:Treatment ) );
+	For Each Row(
+		dt,
+		col1[] = Map Value(
+			dt:Treatment,
+			{"", "Standard", "Dry Land", "Dry", "Dryland", "Dry", "Dryland optimal",
+			"Dry", "Early Planting", "Standard", "Irrigated", "Standard",
+			"Late Planted Irrigated", "Late", "Late Planting", "Late",
+			"Late Stressed", "Late", "Late planting", "Late",
+			"Standard - Irrigated Optimal", "Standard"},
+			Unmatched( dt:Treatment )
+		)
+	);
+	dt << End Data Update;
+);
+
+// Recode column: Previous_Crop1
+Local( {dt, col1},
+	dt = Data Table( "FinalTable" );
+	dt << Begin Data Update;
+	col1 = dt << New Column( dt:Previous_Crop );
+	col1 << Set Name( "Previous_Crop1" );
+	dt << Move Selected Columns( {col1}, after( dt:Previous_Crop ) );
+	For Each Row(
+		dt,
+		col1[] = Map Value(
+			dt:Previous_Crop,
+			{"2019/20 wheat", "wheat", "Clover", "dicotyledoneae", "Cotton",
+			"cotton", "Fallow", "",
+			"Fallow most of 2014 winter planted in fall of 2014 then sprayed with Glystar 24 floz/a on 5/3/15  and killed spring of 2015 spray",
+			"", "Lima beans followed by rye cover crop", "rye", "Peanut",
+			"dicotyledoneae", "Small Grains and Double Crop soybean",
+			"dicotyledoneae", "Sorghum", "sorghum", "Soybean", "dicotyledoneae",
+			"Soybeans", "dicotyledoneae", "Wheat", "wheat", "Winter Wheat", "wheat",
+			"Winter wheat", "wheat", "cereal rye", "rye", "peanut", "dicotyledoneae",
+			"soybean", "dicotyledoneae", "soybean/pumpkin", "dicotyledoneae",
+			"soybeans with fall cereal rye cover", "dicotyledoneae", "sugar beet",
+			"dicotyledoneae", "wheat and Double Crop soybean", "dicotyledoneae",
+			"wheat/double crop soybean", "dicotyledoneae", "wheat/soybean",
+			"dicotyledoneae"},
+			Unmatched( dt:Previous_Crop )
+		)
+	);
+	dt << End Data Update;
+);
+
+// Transform column
+Data Table( "FinalTable" ) << Apply Formula(
+	Columns( :Env ),
+	Formula( Substr( :Env, 1, 2 ) ),
+	Output( New Formula( "State" ) )
+);
+
+// Transform column
+Data Table( "FinalTable" ) << Apply Formula(
+	Columns( :Env ),
+	Formula( Substr( :Env, 3, 2 ) ),
+	Output( New Formula( "Station" ) )
+);
+
+// Move selected columns
+Data Table( "FinalTable" ) << Move Selected Columns(
+	{:State, :Station},
+	after( :Env )
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	"Treatment etc.",
+	{:Treatment, :State, :Station, :Previous_Crop, :Irrigated}
+);
+
+// Rename column group: Treatment etc. → Meta
+Data Table( "FinalTable" ) << Rename Column Group( "Treatment etc.", "Meta" );
+
+// Group Columns
+Data Table(
+	"FinalTable"
+) << Group Columns( Item Range( :E Depth, :Texture ), "E Depth etc." );
+
+// Rename column group: E Depth etc. → Soil
+Data Table(
+	"FinalTable"
+) << Rename Column Group( "E Depth etc.", "Soil" );
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :RH2M 0, :RH2M 56 ),
+	"RH2M 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :T2M_MAX 0, :T2M_MAX 56 ),
+	"T2M_MAX 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :ALLSKY_SFC_SW_DWN 0, :ALLSKY_SFC_SW_DWN 56 ),
+	"ALLSKY_SFC_SW_DWN 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :T2MWET 0, :T2MWET 56 ),
+	"T2MWET 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :QV2M 0, :QV2M 56 ),
+	"QV2M 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :T2M_MIN 0, :T2M_MIN 56 ),
+	"T2M_MIN 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :T2MDEW 0, :T2MDEW 56 ),
+	"T2MDEW 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :PS 0, :PS 56 ),
+	"PS 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :T2M 0, :T2M 56 ),
+	"T2M 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :WS2M 0, :WS2M 56 ),
+	"WS2M 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :PRECTOTCORR 0, :PRECTOTCORR 56 ),
+	"PRECTOTCORR 0 etc."
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :HI30_pGerEme, :LL__10 ),
+	"HI30_pGerEme etc."
+);
+
+// Rename column group: HI30_pGerEme etc. → EC
+Data Table( "FinalTable" ) << Rename Column Group( "HI30_pGerEme etc.", "EC" );
+
+// Recode columns
+Local( {dt},
+	dt = Data Table( "FinalTable" );
+	dt << Begin Data Update;
+	For Each( {colref, index}, {dt:Hybrid_Parent1, dt:Hybrid_Parent2},
+		dt << Recode Column(
+			colref,
+			{Map Value( _rcOrig, {"NA", ""}, Unmatched( _rcNow ) )},
+			Update Properties( 1 ),
+			Target Column( colref )
+		)
+	);
+	dt << End Data Update;
+);
+
+// Transform column
+Data Table( "FinalTable" ) << Apply Formula(
+	Columns( :Hybrid ),
+	Formula(
+		If( Is Missing( :Hybrid_Parent1 ),
+			Word( 1, :Hybrid, "/" ),
+			:Hybrid_Parent1
+		)
+	),
+	Output( New Formula( "Hybrid_Parent1New" ) )
+);
+
+// Move selected column: Hybrid_Parent1New
+Data Table( "FinalTable" ) << Move Selected Columns(
+	{:Hybrid_Parent1New},
+	after( :Hybrid_Parent2 )
+);
+
+// Transform column
+Data Table( "FinalTable" ) << Apply Formula(
+	Columns( :Hybrid ),
+	Formula(
+		If( Is Missing( :Hybrid_Parent2 ),
+			Word( 1, :Hybrid, "/" ),
+			:Hybrid_Parent2
+		)
+	),
+	Output( New Formula( "Hybrid_Parent2New" ) )
+);
+
+// Move selected column: Hybrid_Parent2New
+Data Table( "FinalTable" ) << Move Selected Columns(
+	{:Hybrid_Parent2New},
+	after( :Hybrid_Parent1New )
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :Hybrid_Parent1New, :Hybrid_Parent2New ),
+	"Hybrid_Parent1New etc."
+);
+
+// Rename column group: Hybrid_Parent1New etc. → Parent New
+Data Table( "FinalTable" ) << Rename Column Group(
+	"Hybrid_Parent1New etc.", "Parents New"
+);
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range( :Hybrid_Parent1, :Hybrid_Parent2 ),
+	"Hybrid_Parent1 etc."
+);
+
+// Rename column group: Hybrid_Parent1 etc. → Parents
+Data Table(
+	"FinalTable"
+) << Rename Column Group( "Hybrid_Parent1 etc.", "Parents" );
+
+// Combine columns
+Data Table( "FinalTable" ) << Combine Columns(
+	columns(
+		:"Issue/comment_#1"n, :"Issue/comment_#2"n, :"Issue/comment_#3"n,
+		:"Issue/comment_#4"n, :"Issue/comment_#5"n, :"Issue/comment_#6"n,
+		:"Issue/comment_#7"n, :"Issue/comment_#8"n
+	),
+	Column Name( "Comments" ),
+	Delimiter( "." ),
+	Multiple Response( 0 )
+);
+
+
+////// Make K-Fold Columns
+
+// Select matching cells
+Data Table( "FinalTable" ) << Select Where( :Set == "Train" );
+
+// Make indicator columns: Set
+Data Table( "FinalTable" ) << Make Indicator Columns(	columns( :Set ),	Append Column Name( 1 ),	Include Missing( 1 ));
+
+// Change column modeling type: Year
+Data Table( "FinalTable" ):Year << Set Modeling Type( "Nominal" );
+
+// Select matching cells
+Data Table( "FinalTable" ) << Select Where( :Year == 2022 );
+
+// Make indicator columns: Year
+Data Table( "FinalTable" ) << Make Indicator Columns(	columns( :Year ),	Append Column Name( 1 ));
+
+// Select matching cells
+Data Table( "FinalTable" ) << Select Where( :Year == 2022 | :Year ==2023 );
+
+// New formula column: Year_2022+Year_2023
+Data Table( "FinalTable" ) << New Formula Column(
+	Operation( Category( "Combine" ), "Sum" ),
+	Columns( :Year_2022, :Year_2023 )
+);
+
+// New column: 
+Data Table( "FinalTable" ) <<
+New Column( "EstimateBut23",
+	Continuous,
+	Formula(If( :Year == 2023, Empty(),	:Estimate))
+);
+
+// Move selected column: Estimate_But23
+Data Table( "FinalTable" ) << Move Selected Columns(
+	{:EstimateBut23},
+	after( :Estimate )
+);
+
+// New column: 
+Data Table( "FinalTable" ) <<
+New Column( "EstimateBut22_23",
+	Continuous,
+	Formula(If( :Year == 2022 | :Year == 2023, Empty(), :Estimate))
+);
+
+// Move selected column: 
+Data Table( "FinalTable" ) << Move Selected Columns(
+	{:EstimateBut22_23},
+	after( :Estimate )
+);
+
+Data Table( "FinalTable" ) << New Column( "Latitude_of_Field_Corner_#1 (lower left) DMS",
+	Numeric,
+	"Continuous",
+	Format( "Latitude DMS", "PUNDIR", 15, 0 ),
+	Formula( :"Latitude_of_Field_Corner_#1 (lower left)"n )
+) << Move Selected Columns(
+	{:"Latitude_of_Field_Corner_#1 (lower left) DMS"n},
+	after( :"Longitude_of_Field_Corner_#4 (upper left)"n )
+);
+
+Data Table( "FinalTable" ) << New Column( "Longitude_of_Field_Corner_#1 (lower left) DMS",
+	Numeric,
+	"Continuous",
+	Format( "Longitude DMS", "PUNDIR", 15, 0 ),
+	Formula( :"Longitude_of_Field_Corner_#1 (lower left)"n )
+) << Move Selected Columns(
+	{:"Longitude_of_Field_Corner_#1 (lower left) DMS"n},
+	after( :"Longitude_of_Field_Corner_#4 (upper left)"n )
+);
+
+// Transform column
+Data Table( "FinalTable" ) << New Column("YearNo24",
+	Nominal,
+	Formula( If( :Year != 2024, :Year, Empty() ) ),
+);
+
+// Move selected column: YearNo24
+Data Table( "FinalTable" ) << Move Selected Columns( {:YearNo24}, after( :Year ) );
+
+Data Table( "FinalTable" ) << Clear Row States;
+
+// Save data table
+Data Table(	"FinalTable") << Save(prep_path || "\FinalTable.jmp");
+
+// Save data table to CSV
+Data Table( "FinalTable" ) << Save(prep_path || "\FinalTable.csv");
+
+
+// Close Data Table: Subset Train 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather
+Close(
+	Data Table(
+		"Subset Train 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	),
+	NoSave
+);
+
+// Close Data Table: Subset Test 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather
+Close(
+	Data Table(
+		"Subset Test 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather"
+	),
+	NoSave
+);
+
+// Close Data Table: Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather 2
+Close(
+	Data Table(
+		"Subset 56 days 1_Training_Trait with 1_Training_LSMeans with Concat_Meta with Concat_Weather 2"
+	),
+	NoSave
+);
+
+// Launch platform: Marker Relatedness
+Data Table( "5_Genotype_Data_All_2014_2025_Hybrids_numerical" ) << Marker Relatedness(
+	Marker( Column Group( "SNPs" ) ),
+	Sample ID( :Marker ),
+	Principal Components( 1 ),
+	Clustering( 1 ),
+	Ploidy( 2 ),
+	Set Random Seed( 0 ),
+	Missing Marker Imputation Method( "HWE Off" ),
+	Kinship Type( "Additive" ),
+	Additive Type( "Diploid Method 1" ),
+	SendToReport(
+		Dispatch( {"Hierarchical Clustering", "Dendrogram"}, "Clust Dendro",
+			FrameBox,
+			{Frame Size( 38, 700 )}
+		)
+	)
+);
+
+if (0, //you can skip this
+
+// Update data table
+Data Table( "FinalTable" ) << Update(
+	With( Data Table( "Square Relationship Matrix") ),
+	Match Columns( :Hybrid = :Marker )
+);
+
+// Save data table: FinalTable.jmp
+//Data Table(	"FinalTable") << Save( prep_path || "/FinalTable.jmp" );
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range(
+		:"ADD VanRaden M1 Row 01CSI6/LH287"n, :"ADD VanRaden M1 Row ZS0510/PHP02"n
+	),
+	"ADD VanRaden M1 Row 01CSI6/LH287 etc."
+);
+
+// Rename column group: ADD VanRaden M1 Row 01CSI6/LH287 etc. → ADD VanRaden M1
+Data Table( "FinalTable" ) << Rename Column Group(
+	"ADD VanRaden M1 Row 01CSI6/LH287 etc.", "ADD VanRaden M1"
+);
+
+}
+
+// Delete columns
+Data Table("Square Relationship Matrix" ) << Delete Columns( :Marker, :ADD VanRaden M1 Names );
+
+// Replace All in Data Table
+Local( {dt = Data Table( "Square Relationship Matrix" )},
+	dt << Begin Data Update;
+	For Each( {col}, dt << Get Column Reference( dt << Get Column Names ),
+		col << Set Name(
+			Substitute( col << Get Name, "ADD VanRaden M1 Row ", "", <<IGNORECASE )
+		)
+	);
+	dt << End Data Update;
+);
+
+// Save data table: Square Relationship Matrix Aditive.jmp
+Data Table( "Square Relationship Matrix" ) << Save(prep_path || "/Additive.txt");
+
+// Launch platform: Marker Relatedness
+ Data Table( "5_Genotype_Data_All_2014_2025_Hybrids_numerical" ) << Marker Relatedness(
+	Marker( Column Group( "SNPs" ) ),
+	Sample ID( :Marker ),
+	Principal Components( 1 ),
+	Clustering( 1 ),
+	Ploidy( 2 ),
+	Set Random Seed( 0 ),
+	Missing Marker Imputation Method( "HWE Off" ),
+	Kinship Type( "Dominance" ),
+	Dominance Type( "Diploid Method 2" ),
+);
+
+if (0, //you can skip this
+// Update data table
+Data Table( "FinalTable" ) << Update(
+	With( Data Table( "Square Relationship Matrix" ) ),
+	Match Columns( :Hybrid = :Marker )
+);
+
+// Close Data Table: 5_Genotype_Data_All_2014_2025_Hybrids_numerical
+Close( Data Table( "5_Genotype_Data_All_2014_2025_Hybrids_numerical" ), NoSave );
+
+// Group Columns
+Data Table( "FinalTable" ) << Group Columns(
+	Item Range(
+		:"DOM Vitezica Row 01CSI6/LH287"n, :"DOM Vitezica Row ZS0510/PHP02"n
+	),
+	"DOM Vitezica Row 01CSI6/LH287 etc."
+);
+
+// Rename column group: DOM Vitezica Row 01CSI6/LH287 etc. → DOM Vitezica
+Data Table( "FinalTable" ) << Rename Column Group(
+	"DOM Vitezica Row 01CSI6/LH287 etc.", "DOM Vitezica"
+);
+
+// Save data table
+Data Table(	"FinalTable") << Save(prep_path || "\FinalTable.jmp");
+}
+
+// Delete columns
+Data Table( "Square Relationship Matrix" ) << Delete Columns( :Marker, :DOM Vitezica Names );
+
+// Replace All in Data Table
+Local( {dt = Data Table( "Square Relationship Matrix" )},
+	dt << Begin Data Update;
+	For Each( {col}, dt << Get Column Reference( dt << Get Column Names ),
+		col << Set Name(
+			Substitute( col << Get Name, "DOM Vitezica Row", "", <<IGNORECASE )
+		)
+	);
+	dt << End Data Update;
+);
+
+// Save data table: Square Relationship Matrix Aditive.jmp
+Data Table( "Square Relationship Matrix" ) << Save(	prep_path || "/Dominance.txt");
+
+// Close Data Table: AdditiveMatrix
+Close( Data Table( "Additive" ), NoSave );
+
+// Close Data Table: DominanceMatrix
+Close( Data Table( "Dominance" ), NoSave );
+
+if (0, //you can skip this
+
+Data Table( "FinalTable" ) << Marker Admixture(
+	Marker( Column Group( "SNPs" ) ),
+	Sample ID( :Marker ),
+	Fit,
+	SendToReport(
+		Dispatch( {"Model 1", "Individuals"}, "Hierarchical Clustering", OutlineBox,
+			{Set Title( "Hierarchical Cluster" )}
+		),
+		Dispatch(
+			{"Model 1", "Individuals", "Hierarchical Clustering", "Dendrogram"},
+			"Clust Dendro", FrameBox,
+			{Frame Size( 38, 700 )}
+		),
+		Dispatch( {"Model 1"}, "Populations", OutlineBox, {Close( 0 )} )
+	)
+);
+
+///// Final Data for Covariates
+
+// Clear row selection
+Data Table( "FinalTable" ) << Clear Select;
+
+// Subset data table
+Data Table( "FinalTable" ) << Select Duplicate Rows( Match( :Env ) ) << Invert Row Selection; 
+Data Table( "FinalTable" ) << Subset(
+	Output Table( "FinalTable NoDup Meta Soil 56Weather EC" ),
+	Selected Rows( 1 ),
+	Selected columns only( 0 ),
+	columns(
+		:Env, :Year, :Field_Location, :Experiment, :Set, :Experiment_Code, :City, :Farm,
+		:Field,
+		:"Trial_ID (Assigned by collaborator for internal reference)"n,
+		:"Soil_Taxonomic_ID and horizon description, if known"n,
+		:"Weather_Station_Serial_Number (Last four digits, e.g. m2700s#####)"n,
+		:"Weather_Station_Latitude (in decimal numbers NOT DMS)"n,
+		:"Weather_Station_Longitude (in decimal numbers NOT DMS)"n,
+		:Date_weather_station_placed, :Date_weather_station_removed,
+		:"Pre-plant_tillage_method(s)"n, :"In-season_tillage_method(s)"n,
+		:"Type_of_planter (fluted cone; belt cone; air planter)"n,
+		:System_Determining_Moisture, :Pounds_Needed_Soil_Moisture,
+		:"Latitude_of_Field_Corner_#1 (lower left)"n,
+		:"Longitude_of_Field_Corner_#1 (lower left)"n,
+		:"Latitude_of_Field_Corner_#2 (lower right)"n,
+		:"Longitude_of_Field_Corner_#2 (lower right)"n,
+		:"Latitude_of_Field_Corner_#3 (upper right)"n,
+		:"Longitude_of_Field_Corner_#3 (upper right)"n,
+		:"Latitude_of_Field_Corner_#4 (upper left)"n,
+		:"Longitude_of_Field_Corner_#4 (upper left)"n,
+		:"Longitude_of_Field_Corner_#1 (lower left) DMS"n,
+		:"Latitude_of_Field_Corner_#1 (lower left) DMS"n, :Cardinal_Heading_Pass_1,
+		:"Issue/comment_#1"n, :"Issue/comment_#2"n,
+		:"Issue/comment_#3"n, :"Issue/comment_#4"n, :"Issue/comment_#5"n,
+		:"Issue/comment_#6"n, :"Issue/comment_#7"n, :"Issue/comment_#8"n,
+		:"Date[Date_Planted]"n, :Plot_Area_ha, 
+		:Comments,		
+		Column Group( "Meta" ),
+		Column Group( "Soil" ),
+		Column Group( "RH2M 0 etc."  ),
+		Column Group( "T2M_MAX 0 etc."  ),
+		Column Group( "ALLSKY_SFC_SW_DWN 0 etc."  ),
+		Column Group( "T2MDEW 0 etc."  ),
+		Column Group( "QV2M 0 etc." ),
+		Column Group( "T2M_MIN 0 etc."  ),
+		Column Group( "T2MWET 0 etc."  ),		
+		Column Group( "PS 0 etc."  ),
+		Column Group( "T2M 0 etc."  ),
+		Column Group( "WS2M 0 etc."  ),
+		Column Group( "PRECTOTCORR 0 etc."  ),
+		Column Group( "EC"),		
+		)
+);
+
+// Save data table: FinalTable NoDup Meta Soil 56Weather EC.jmp
+//Data Table( "FinalTable NoDup Meta Soil 56Weather EC" ) << Save(prep_path || "/FinalTable NoDup Meta Soil 56Weather EC.jmp");
+
+Data Table( "FinalTable NoDup Meta Soil 56Weather EC" ) << Graph Builder(
+	Size( 856, 600 ),
+	Show Control Panel( 0 ),
+	Variables(
+		X( :"Longitude_of_Field_Corner_#1 (lower left) DMS"n ),
+		Y( :"Latitude_of_Field_Corner_#1 (lower left) DMS"n ),
+		Color( :Experiment_Code )
+	),
+	Elements( Points( X, Y, Legend( 2 ) ) ),
+	SendToReport(
+		Dispatch( {}, "Graph Builder", FrameBox,
+			{Background Map(
+				Boundaries( {"Canadian Provinces", "German States", "US States"} )
+			)}
+		)
+	)
+);
+
+// Report snapshot: FinalTable NoDup Meta Soil 56Weather EC - Principal Components
+Data Table( "FinalTable NoDup Meta Soil 56Weather EC" ) << Principal Components(
+	Y(
+		:E Depth,
+		:"1:1 Soil pH"n,
+		:WDRF Buffer pH,
+		:"1:1 S Salts mmho/cm"n,
+		:Texture No,
+		:Organic Matter LOI %,
+		:"Nitrate-N ppm N"n,
+		:"lbs N/A"n,
+		:Potassium ppm K,
+		:"Sulfate-S ppm S"n,
+		:Calcium ppm Ca,
+		:Magnesium ppm Mg,
+		:Sodium ppm Na,
+		:"CEC/Sum of Cations me/100g"n,
+		:"%H Sat"n,
+		:"%K Sat"n,
+		:"%Ca Sat"n,
+		:"%Mg Sat"n,
+		:"%Na Sat"n,
+		:"Mehlich P-III ppm P"n,
+		:"% Sand"n,
+		:"% Silt"n,
+		:"% Clay"n,
+		Column Group( "RH2M 0 etc." ),
+		Column Group( "T2M_MAX 0 etc." ),
+		Column Group( "ALLSKY_SFC_SW_DWN 0 etc." ),
+		Column Group( "T2MDEW 0 etc." ),
+		Column Group( "QV2M 0 etc." ),
+		Column Group( "T2M_MIN 0 etc." ),
+		Column Group( "T2MWET 0 etc." ),
+		Column Group( "PS 0 etc." ),
+		Column Group( "T2M 0 etc." ),
+		Column Group( "WS2M 0 etc." ),
+		Column Group( "PRECTOTCORR 0 etc." ),
+		Column Group( "EC" )
+	),
+	Estimation Method( "Full SVD" ),
+	Standardize( "Standardized" ),
+	Summary Plots( Label variables( 0 ) ),
+	Arrow Lines( 0 )
+);
+
+Data Table( "FinalTable NoDup Meta Soil 56Weather EC" ) << Hierarchical Cluster(
+	Y(
+		Column Group( "RH2M 0 etc." ),
+		Column Group( "T2M_MAX 0 etc." ),
+		Column Group( "ALLSKY_SFC_SW_DWN 0 etc." ),
+		Column Group( "T2MDEW 0 etc." ),
+		Column Group( "QV2M 0 etc." ),
+		Column Group( "T2M_MIN 0 etc." ),
+		Column Group( "T2MWET 0 etc." ),
+		Column Group( "PS 0 etc." ),
+		Column Group( "T2M 0 etc." ),
+		Column Group( "WS2M 0 etc." ),
+		Column Group( "PRECTOTCORR 0 etc." ),
+		Column Group( "EC" )
+	),
+	Method( "Hybrid Ward" ),
+	Standardize By( "Columns" ),
+	Dendrogram Scale( "Distance Scale" ),
+	Number of Clusters( 14 ),
+	Color Map( "Blue to Gray to Red" ),
+	Two Way Clustering
+);
+
+// Close Data Table: FinalTable NoDup Meta Soil 56Weather EC
+Close( Data Table( "FinalTable NoDup Meta Soil 56Weather EC" ), NoSave );
+
+}

@@ -1,0 +1,167 @@
+Names Default To Here( 1 );
+
+root_path = "\\tdl\Public2\G2F\Manuscript\"; // Adjust to your path
+prep_path = root_path || "\Results\DataPrep\";
+train_path = root_path || "\Data\Challenge2024\Training_data";
+test_path = root_path || "\Data\Challenge2024\Testing_data";
+
+Workflow_=function({}, 
+
+	// Import text file: oof_model_A_D_E_val.csv
+	Open(
+	root_path || "/Results/M1/oof_model_A_D_E_val.csv",
+	columns(
+		New Column( "Env", Character, "Nominal" ),
+		New Column( "Hybrid", Character, "Nominal" ),
+		New Column( "ytrue", Numeric, "Continuous", Format( "Best", 12 ) ),
+		New Column( "ypred", Numeric, "Continuous", Format( "Best", 12 ) )
+	),
+	Import Settings(
+		End Of Line( CRLF, CR, LF ),
+		End Of Field( Comma, CSV( 1 ) ),
+		Treat Leading Zeros as Character( 1 ),
+		Strip Quotes( 0 ),
+		Use Apostrophe as Quotation Mark( 0 ),
+		Use Regional Settings( 0 ),
+		Scan Whole File( 1 ),
+		Treat empty columns as numeric( 0 ),
+		CompressNumericColumns( 0 ),
+		CompressCharacterColumns( 0 ),
+		CompressAllowListCheck( 0 ),
+		Labels( 1 ),
+		Column Names Start( 1 ),
+		First Named Column( 1 ),
+		Data Starts( 2 ),
+		Lines To Read( "All" ),
+		Year Rule( "20xx" )
+	)
+	);
+
+	dt = Current Data Table();
+
+    step_name = "New formula column: Last[Env]";
+    //New formula column: Last[Env]
+    dt << New Formula Column(
+    	Operation( Category( "Character" ), "Last Word" ),
+    	Columns( :Env )
+    );
+
+    step_name = "Change column formula: Last[Env]";
+    //Change column formula: Last[Env]
+    dt:"Last[Env]"n << Set Formula( Word( -1, :Env, "_" ) );
+
+    step_name = "New formula column: ytrue-ypred";
+    //New formula column: ytrue-ypred
+    dt << New Formula Column(
+    	Operation( Category( "Combine" ), "Difference" ),
+    	Columns( :ytrue, :ypred )
+    );
+
+    step_name = "New formula column: ytrue-ypred^2";
+    //New formula column: ytrue-ypred^2
+    dt << New Formula Column(
+    	Operation( Category( "Transform" ), "Square" ),
+    	Columns( :"ytrue-ypred"n )
+    );
+
+    step_name = "Data table summary 1";
+    //Data table summary
+    dt << Summary(
+    	Group( :"Last[Env]"n, :Env ),
+    	Mean( :"ytrue-ypred^2"n ),
+    	Freq( "None" ),
+    	Weight( "None" ),
+    	output table name( concat("Summary of ", dt << Get Name ))
+    );
+
+    step_name = "New formula column: Square Root[Mean(ytrue-ypred^2)]";
+    //New formula column: Square Root[Mean(ytrue-ypred^2)]
+    Data Table( concat("Summary of ", dt << Get Name ) ) <<
+    New Formula Column(
+    	Operation( Category( "Transform" ), "Square Root" ),
+    	Columns( :"Mean(ytrue-ypred^2)"n )
+    );
+
+    step_name = "Data table summary 2";
+    //Data table summary
+    Data Table( concat("Summary of ", dt << Get Name ) ) <<
+    Summary(
+    	Group( :"Last[Env]"n ),
+    	Mean( :"Square Root[Mean(ytrue-ypred^2)]"n ),
+    	Freq( "None" ),
+    	Weight( "None" ),
+    	output table name( concat(dt << Get Name, " RMSE" )
+    	)
+    );
+
+    step_name = "Save data table: RMSE Summary";
+    //Save data table: Summary of Summary of oof_model_E_val grouped by Last[Env] etc. grouped by Last[Env].jmp
+    Data Table(	 concat(dt << Get Name, " RMSE" ) ) << Save(
+    	concat(root_path || "/Results/M1/", concat(dt << Get Name, " RMSE" ), ".jmp")
+    );
+
+    step_name = "Close Data Table: Summary of Summary ";
+    //Close Data Table: Summary of Summary of oof_model_E_val grouped by Last[Env] etc. grouped by Last[Env]
+    Close(
+    	Data Table(
+    		concat(dt << Get Name, " RMSE" )
+    	),
+    	NoSave
+    );
+
+    step_name = "Close Data Table: Summary";
+    //Close Data Table: Summary of oof_model_E_val grouped by Last[Env] etc.
+    Close(
+    	Data Table( concat("Summary of ", dt << Get Name) ),
+    	NoSave
+    );
+
+// Combine similar TableBoxes into a Data Table
+Local( {obj},
+	obj = dt <<
+	Bivariate(
+		Y( :ytrue ),
+		X( :ypred ),
+		Summary Statistics( 1 ),
+		By( :Env, :"Last[Env]"n )
+	);
+	Report( obj[1] )["Summary Statistics", Table Box( 1 )] <<
+	Make Combined Data Table("tmp");
+	obj[1] << Close Window;
+);
+
+dtc = Current Data Table();
+
+// Select matching cells
+dtc << Select Where( :Column 1 == "Correlation" );
+
+// Insert rows
+dtc << Select Where( :Column 1 == "Correlation" ) << Insert Rows;
+
+// Invert current selection
+dtc << Invert Row Selection;
+
+// Delete selected rows
+dtc << Delete Rows;
+
+// Data table summary
+dtc << Summary(
+	Group( :"Last[Env]"n ),
+	Mean( :Value ),
+	Freq( "None" ),
+	Weight( "None" ),
+	output table name( "Summary of CORR" )
+);
+
+Data Table("Summary of CORR") << Save(
+  	concat(root_path || "/Results/M1/", concat(dt << Get Name, " CORR" ), ".jmp")
+);
+
+Close(dtc, NoSave);
+
+    step_name = "Close Data Table: DT";
+    //Close Data Table: oof_model_E_val
+    Close( dt , NoSave );
+);
+Workflow_();
+
